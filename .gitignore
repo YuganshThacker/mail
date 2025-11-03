@@ -1,0 +1,50 @@
+# Credentials and tokens
+credentials.json
+token_*.json
+*.token
+
+# Environment variables
+.env
+.env.local
+
+# Cache files
+ai_cache.json
+keyword_labels.json
+sent_reminders.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
