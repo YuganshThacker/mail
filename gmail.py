@@ -558,33 +558,45 @@ def create_flow_from_secrets(scopes):
 def index():
     # Check authentication first
     if 'credentials' not in session:
-        # Show welcome page instead of redirect loop
-        welcome_html = f"""
-        <div class="container mt-5">
-            <div class="row justify-content-center">
-                <div class="col-md-8 text-center">
-                    <h1 class="mb-4">📧 Gmail Clone</h1>
-                    <p class="lead mb-4">A powerful Gmail client with AI-powered features</p>
-                    <div class="card bg-dark text-white p-4 mb-4">
-                        <h5>Features:</h5>
-                        <ul class="list-unstyled">
-                            <li>📧 Full Gmail API integration</li>
-                            <li>🤖 AI-powered email analysis</li>
-                            <li>🏷️ Smart email categorization</li>
-                            <li>📱 Modern responsive interface</li>
-                        </ul>
-                    </div>
-                    <a href="{url_for('authorize')}" class="btn btn-primary btn-lg">
-                        🔐 Connect with Gmail
-                    </a>
-                    <p class="mt-3 text-muted small">
-                        Click above to securely connect your Gmail account
-                    </p>
+        # Return simple HTML without complex template
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Gmail Clone</title>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; background: #1a202c; color: white; text-align: center; }
+                .container { max-width: 600px; margin: 0 auto; padding: 40px; background: #2d3748; border-radius: 10px; }
+                .btn { padding: 15px 30px; background: #2b6cb0; color: white; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }
+                .btn:hover { background: #3182ce; }
+                h1 { color: #e2e8f0; margin-bottom: 20px; }
+                p { color: #cbd5e0; line-height: 1.6; }
+                .features { text-align: left; margin: 20px 0; }
+                .features li { margin: 10px 0; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <h1>📧 Gmail Clone</h1>
+                <p>A powerful Gmail client with AI-powered features built with Flask and deployed on Vercel.</p>
+                <div class="features">
+                    <h3>Features:</h3>
+                    <ul>
+                        <li>📧 Full Gmail API integration</li>
+                        <li>🤖 AI-powered email analysis with Google Gemini</li>
+                        <li>🏷️ Smart email categorization and labeling</li>
+                        <li>📱 Modern responsive interface</li>
+                        <li>🔐 Secure OAuth 2.0 authentication</li>
+                    </ul>
                 </div>
+                <a href="/authorize" class="btn">🔐 Connect with Gmail</a>
+                <p>Click above to securely connect your Gmail account and start using the app.</p>
             </div>
-        </div>
+        </body>
+        </html>
         """
-        return render_template_string(BASE_TEMPLATE, label="welcome", content=welcome_html, user_labels=[])
     
     label = request.args.get("label", "inbox")
     service, emails = fetch_emails(label=label, search_query=request.args.get("search", ""))
