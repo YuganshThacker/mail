@@ -556,6 +556,36 @@ def create_flow_from_secrets(scopes):
 
 @app.route("/")
 def index():
+    # Check authentication first
+    if 'credentials' not in session:
+        # Show welcome page instead of redirect loop
+        welcome_html = f"""
+        <div class="container mt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-8 text-center">
+                    <h1 class="mb-4">📧 Gmail Clone</h1>
+                    <p class="lead mb-4">A powerful Gmail client with AI-powered features</p>
+                    <div class="card bg-dark text-white p-4 mb-4">
+                        <h5>Features:</h5>
+                        <ul class="list-unstyled">
+                            <li>📧 Full Gmail API integration</li>
+                            <li>🤖 AI-powered email analysis</li>
+                            <li>🏷️ Smart email categorization</li>
+                            <li>📱 Modern responsive interface</li>
+                        </ul>
+                    </div>
+                    <a href="{url_for('authorize')}" class="btn btn-primary btn-lg">
+                        🔐 Connect with Gmail
+                    </a>
+                    <p class="mt-3 text-muted small">
+                        Click above to securely connect your Gmail account
+                    </p>
+                </div>
+            </div>
+        </div>
+        """
+        return render_template_string(BASE_TEMPLATE, label="welcome", content=welcome_html, user_labels=[])
+    
     label = request.args.get("label", "inbox")
     service, emails = fetch_emails(label=label, search_query=request.args.get("search", ""))
     if isinstance(service, Response): return service # FIX APPLIED
@@ -698,209 +728,98 @@ def view_email(email_id):
     """
     return render_template_string(BASE_TEMPLATE, label="view", content=email_html, user_labels=all_user_labels)
 
-# ---------------- Action Routes ----------------
-
-@app.route("/star/<email_id>")
-def star_email(email_id):
-    result = toggle_star(email_id)
-    if isinstance(result, Response): return result # FIX APPLIED
-    flash("✅ Star status updated.")
-    return redirect(url_for('view_email', email_id=email_id))
-
-@app.route("/delete/<email_id>")
-def delete_route(email_id):
-    result = delete_email(email_id)
-    if isinstance(result, Response): return result # FIX APPLIED
-    flash("✅ Email moved to Trash.")
-    return redirect(url_for('index', label='inbox'))
-
-@app.route("/unspam/<email_id>")
-def unspam_route(email_id):
-    result = unspam_email(email_id)
-    if isinstance(result, Response): return result # FIX APPLIED
-    flash("✅ Email moved from Spam to Inbox.")
-    return redirect(url_for('index', label='inbox'))
-
-@app.route("/spam/<email_id>")
-def spam_route(email_id):
-    result = spam_email(email_id)
-    if isinstance(result, Response): return result # FIX APPLIED
-    flash("✅ Email moved to Spam.")
-    return redirect(url_for('index', label='inbox'))
-
-@app.route("/archive/<email_id>")
-def archive_route(email_id):
-    result = archive_email(email_id)
-    if isinstance(result, Response): return result # FIX APPLIED
-    flash("✅ Email archived.")
-    return redirect(url_for('index', label='inbox'))
-
-@app.route("/create-label", methods=["POST"])
-def create_label_route():
-    label_name = request.form.get("label_name")
-    if not label_name:
-        flash("❌ Label name cannot be empty.")
-        return redirect(request.referrer or url_for('index'))
-    result = create_label(label_name)
-    if isinstance(result, Response): return result # FIX APPLIED
-    return redirect(request.referrer or url_for('index'))
-
-@app.route("/delete-label/<label_id>")
-def delete_label_route(label_id):
-    result = delete_label_api(label_id)
-    if isinstance(result, Response): return result # FIX APPLIED
-    return redirect(url_for('index'))
-
-@app.route("/add-label/<email_id>/<label_id>")
-def add_label_to_email(email_id, label_id):
-    result = modify_email_labels(email_id, labels_to_add=[label_id])
-    if isinstance(result, Response): return result # FIX APPLIED
-    flash("✅ Label applied.")
-    return redirect(url_for('view_email', email_id=email_id))
-
-@app.route("/draft/<email_id>")
-def draft_email(email_id):
-    flash("⚠️ Drafts functionality is a placeholder (email not saved as draft).")
-    return redirect(url_for('view_email', email_id=email_id))
-
-# ---------------- AI/KEYWORD ROUTES (Modified to check for Response) ----------------
-
-@app.route("/set-keywords", methods=["GET","POST"])
-def set_keywords():
-    service, user_labels = get_user_labels()
-    if isinstance(service, Response): return service # FIX APPLIED
-
-    if request.method == "POST":
-        keywords_data = load_keywords()
-        keyword = request.form.get('keyword', '').strip()
-        label_name = request.form.get('label_name', '').strip()
-        action = request.form.get('action')
-        
-        # Since file I/O is disabled, this logic will only store the keywords
-        # in the ephemeral memory until the server restarts.
-        if action == "add" and keyword and label_name:
-            flash(f"⚠️ Keyword '{keyword}' was temporarily saved. It will be lost on service restart (Render ephemeral storage).")
-            # For demonstration, we'll store it in the Flask session as a temporary fix
-            session['keywords'] = session.get('keywords', {})
-            session['keywords'][keyword] = label_name
-        
-        # NOTE: Delete action is removed here for simplicity with session storage demo
-        
-        return redirect(url_for('set_keywords'))
-
-    # Read keywords from the non-persistent memory (or session for this route)
-    keywords_data = session.get('keywords', {})
-    
-    # ... [HTML generation logic remains the same, using keywords_data] ...
-    keywords_list_html = ""
-    if keywords_data:
-        keywords_list_html = "<h5>Active Keywords (Temporary)</h5><ul class='list-group mb-4'>"
-        for kw, lbl in keywords_data.items():
-            keywords_list_html += f"""
-                <li class='list-group-item d-flex justify-content-between align-items-center bg-secondary-subtle'>
-                    Keyword: <b>{escape(kw)}</b> 
-                    <span class='badge bg-info text-dark'>Label: {escape(lbl)}</span>
-                </li>
-            """
-        keywords_list_html += "</ul>"
-    
-    html = f"""
-        <h3>🔑 Keyword-to-Label Mapping (Temporary)</h3>
-        <p class='alert alert-warning'>⚠️ **IMPORTANT:** Due to Render's file storage limitations, keywords are only stored in the session and **will be lost** if the server restarts. For permanent storage, you need a database.</p>
-        <hr>
-        {keywords_list_html}
-        <h5>Add New Mapping</h5>
-        <form method="POST" action="{url_for('set_keywords')}" class="card p-3 bg-secondary-subtle">
-            <input type="hidden" name="action" value="add">
-            <div class="row g-3">
-                <div class="col-md-5">
-                    <input type="text" name="keyword" class="form-control" placeholder="Enter Keyword (e.g., 'invoice')" required>
-                </div>
-                <div class="col-md-5">
-                    <input type="text" name="label_name" class="form-control" placeholder="Enter Label Name (e.g., 'Finance')" required>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-success w-100">Add</button>
-                </div>
+def get_compose_html(to_email="", subject="", message="", original_body=""):
+    """Generate HTML for the compose email form."""
+    return f"""
+    <h3>✉️ Compose Email</h3>
+    <hr>
+    <form method="POST" action="{url_for('compose')}" class="needs-validation" novalidate>
+        <div class="row g-3">
+            <div class="col-12">
+                <label for="to_email" class="form-label">To:</label>
+                <input type="email" class="form-control" id="to_email" name="to_email" 
+                       value="{escape(to_email)}" placeholder="recipient@example.com" required>
+                <div class="invalid-feedback">Please provide a valid email address.</div>
             </div>
-        </form>
+            <div class="col-12">
+                <label for="subject" class="form-label">Subject:</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="subject" name="subject" 
+                           value="{escape(subject)}" placeholder="Enter subject..." required>
+                    <button type="button" class="btn btn-outline-secondary" onclick="generateAIBody()" 
+                            title="Generate email body with AI">🤖 AI</button>
+                </div>
+                <div class="invalid-feedback">Please provide a subject.</div>
+            </div>
+            <div class="col-12">
+                <label for="message" class="form-label">Message:</label>
+                <textarea class="form-control" id="message" name="message" rows="12" 
+                          placeholder="Type your message here..." required>{escape(message)}</textarea>
+                <div class="invalid-feedback">Please provide a message.</div>
+            </div>
+            {f'<div class="col-12"><label class="form-label">Original Message:</label><div class="bg-light p-3 rounded"><pre>{escape(original_body)}</pre></div></div>' if original_body else ''}
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary me-2">📤 Send Email</button>
+                <a href="{url_for('index')}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </div>
+    </form>
+    
+    <script>
+    // Form validation
+    (function() {{
+        'use strict';
+        window.addEventListener('load', function() {{
+            var forms = document.getElementsByClassName('needs-validation');
+            var validation = Array.prototype.filter.call(forms, function(form) {{
+                form.addEventListener('submit', function(event) {{
+                    if (form.checkValidity() === false) {{
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }}
+                    form.classList.add('was-validated');
+                }}, false);
+            }});
+        }}, false);
+    }})();
+    
+    // AI Body Generation
+    function generateAIBody() {{
+        const toEmail = document.getElementById('to_email').value;
+        const subject = document.getElementById('subject').value;
+        
+        if (!subject) {{
+            alert('Please enter a subject first to generate AI content.');
+            return;
+        }}
+        
+        const button = event.target;
+        button.disabled = true;
+        button.textContent = '🤖 Generating...';
+        
+        fetch('/ai-generate-body', {{
+            method: 'POST',
+            headers: {{'Content-Type': 'application/json'}},
+            body: JSON.stringify({{to: toEmail, subject: subject}})
+        }})
+        .then(response => response.json())
+        .then(data => {{
+            if (data.body) {{
+                document.getElementById('message').value = data.body;
+            }} else {{
+                alert('Error generating body: ' + (data.error || 'Unknown error'));
+            }}
+        }})
+        .catch(error => {{
+            alert('Error: ' + error.message);
+        }})
+        .finally(() => {{
+            button.disabled = false;
+            button.textContent = '🤖 AI';
+        }});
+    }}
+    </script>
     """
-    return render_template_string(BASE_TEMPLATE, label="set_keywords", content=html, user_labels=user_labels)
-
-@app.route("/run-ai-analysis/<email_id>")
-def run_ai_analysis(email_id):
-    service_check = get_service()
-    if isinstance(service_check, Response): return service_check # FIX APPLIED
-    
-    service, all_labels = get_user_labels()
-    if isinstance(service, Response): return service # FIX APPLIED
-
-    keywords = session.get('keywords', {}) # Use temporary session storage for keywords
-    
-    # 1. Fetch data
-    email_data = fetch_single_email(email_id)
-    if isinstance(email_data, Response): return email_data # FIX APPLIED
-    if email_data is None: 
-        flash("❌ Error fetching email for analysis.")
-        return redirect(url_for("view_email", email_id=email_id))
-    
-    # Prepare text for AI, prioritizing text_for_ai which contains plain text/stripped html
-    text = email_data["text_for_ai"].lower()
-    
-    applied_label = None
-
-    # 1. Keyword Matching (Priority)
-    for kw, lbl in keywords.items():
-        if kw.lower() in text:
-            lid = get_or_create_label_id(service, lbl, all_labels)
-            modify_email_labels(email_id, labels_to_add=[lid])
-            applied_label = lbl
-            flash(f"✅ Applied label '{lbl}' via keyword match.")
-            break
-            
-    # 2. AI Fallback (If no keyword match)
-    if not applied_label and ai_model:
-        ai_result = analyze_email_with_ai(email_data["subject"], email_data["text_for_ai"], datetime.now(timezone.utc))
-        
-        # --- Auto-label as "Urgent" ---
-        if ai_result.get("is_urgent"):
-            try:
-                urgent_label_id = get_or_create_label_id(service, "Urgent", all_labels)
-                modify_email_labels(email_id, labels_to_add=[urgent_label_id])
-                flash("✅ AI detected an urgent task/deadline and applied the 'Urgent' label.")
-            except Exception as e:
-                print(f"Failed to apply 'Urgent' label: {e}")
-        else:
-            flash("✅ AI completed analysis (no urgent task found).")
-            
-        # --- CACHING LOGIC (Non-persistent) ---
-        cache_data = load_ai_cache()
-        ai_result['original_subject'] = email_data.get("subject", "(No Subject)")
-        # In a real deployed environment, this data is often stored in a key-value store like Redis
-        # For this version, we accept it will be lost.
-        # cache_data[email_id] = ai_result
-        # save_ai_cache(cache_data)
-        
-    elif not applied_label and not ai_model:
-        flash("❌ AI is disabled (API key missing or file I/O error). No analysis performed.")
-
-    return redirect(url_for("view_email", email_id=email_id))
-
-@app.route("/ai-generate-body", methods=["POST"])
-def ai_generate_body():
-    service_check = get_service()
-    if isinstance(service_check, Response): return jsonify({"error": "Authentication required."}), 401 # FIX APPLIED
-    
-    data = request.get_json()
-    recipient = data.get("to", "")
-    subject = data.get("subject", "")
-
-    if not subject:
-        return jsonify({"error": "Subject is required to generate body."}), 400
-
-    body_text = generate_email_body(recipient, subject)
-    return jsonify({"body": body_text})
-
 
 # ---------------- Original Email Action Routes (Modified to check for Response) ----------------
 
