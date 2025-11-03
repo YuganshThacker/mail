@@ -3,38 +3,36 @@ import os
 import sys
 from flask import Flask
 
-# Create a simple test app first to debug
-app = Flask(__name__)
+# Add parent directory to Python path for importing gmail.py
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-@app.route("/")
-def home():
-    return {
-        "message": "Gmail app test deployment", 
-        "status": "running",
-        "env_vars": {
-            "GEMINI_API_KEY": "Set" if os.getenv("GEMINI_API_KEY") else "Not set",
-            "FLASK_SECRET_KEY": "Set" if os.getenv("FLASK_SECRET_KEY") else "Not set", 
-            "GOOGLE_OAUTH_CREDENTIALS": "Set" if os.getenv("GOOGLE_OAUTH_CREDENTIALS") else "Not set"
+# Try to import the full Gmail app
+try:
+    from gmail import app
+    print("✅ Successfully imported Gmail app")
+except ImportError as e:
+    print(f"❌ Failed to import Gmail app: {e}")
+    # Fallback: Create a simple error reporting app
+    app = Flask(__name__)
+    
+    @app.route("/")
+    def fallback_home():
+        return {
+            "error": "Failed to load Gmail app",
+            "details": str(e),
+            "env_check": {
+                "GEMINI_API_KEY": "Set" if os.getenv("GEMINI_API_KEY") else "Missing",
+                "FLASK_SECRET_KEY": "Set" if os.getenv("FLASK_SECRET_KEY") else "Missing",
+                "GOOGLE_OAUTH_CREDENTIALS": "Set" if os.getenv("GOOGLE_OAUTH_CREDENTIALS") else "Missing"
+            }
         }
-    }
+    
+    @app.route("/health")
+    def health():
+        return {"status": "error", "message": "Gmail app failed to load"}
 
-@app.route("/test-import")
-def test_import():
-    try:
-        # Add parent directory to Python path
-        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        
-        # Try importing gmail module
-        import gmail
-        return {"status": "success", "message": "Gmail module imported successfully"}
-    except Exception as e:
-        return {"status": "error", "message": str(e), "type": type(e).__name__}
-
-# For later: uncomment when basic test works
-# try:
-#     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-#     from gmail import app as gmail_app
-#     app = gmail_app
-# except Exception as e:
-#     print(f"Failed to import gmail app: {e}")
-#     pass
+# Add a health check endpoint to the main app if it loaded successfully
+if 'gmail' in sys.modules:
+    @app.route("/health")
+    def health():
+        return {"status": "success", "message": "Gmail app loaded successfully"}
