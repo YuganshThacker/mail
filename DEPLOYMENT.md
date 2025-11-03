@@ -28,24 +28,32 @@ GOOGLE_OAUTH_CREDENTIALS=eyJpbnN0YWxsZWQiOnsiY2xpZW50X2lkIjoiMzAyNDI2MTc1MzE1LWh
 
 ## Deployment Steps
 
-### 1. Prepare Repository
-```bash
-# Remove sensitive files from git (if already committed)
-git rm --cached credentials.json token_gmail_clone.json
+### 1. Create GitHub Repository ✅ COMPLETED
+The repository is ready with all necessary files and proper security setup.
 
-# Add and commit changes
-git add .
-git commit -m "Prepare for Vercel deployment"
+### 2. Connect to GitHub
+After creating your GitHub repository, run these commands:
+```bash
+# Replace YOURUSERNAME with your actual GitHub username
+git remote add origin https://github.com/YOURUSERNAME/gmail-clone-app.git
+git branch -M main
+git push -u origin main
 ```
 
-### 2. Deploy to Vercel
+### 3. Deploy to Vercel
 ```bash
-# Login to Vercel
+# Login to Vercel (visit vercel.com/device and enter code TNNG-CWLJ)
 vercel login
 
-# Deploy
+# Deploy from GitHub (recommended) or directly
 vercel --prod
 ```
+
+**OR** Deploy via Vercel Dashboard:
+1. Go to [vercel.com/new](https://vercel.com/new)
+2. Import your GitHub repository
+3. Configure environment variables
+4. Deploy
 
 ### 3. Update Google Cloud Console
 After deployment, update your Google Cloud Console:
